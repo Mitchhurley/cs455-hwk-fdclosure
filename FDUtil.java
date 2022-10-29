@@ -1,5 +1,8 @@
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * This utility class is not meant to be instantitated, and just provides some
@@ -17,11 +20,27 @@ public final class FDUtil {
    * @return a set of trivial FDs with respect to the given FDSet
    */
   public static FDSet trivial(final FDSet fdset) {
-    // TODO: Obtain the power set of each FD's left-hand attributes. For each
-    // element in the power set, create a new FD and add it to the a new FDSet.
-
-    return null;
+    // Set to hold generated trivial FDs.
+	FDSet trivial = new FDSet();
+	//find all subsets
+	Set<FD> temp = fdset.getSet();
+	//generate trivials for each FD already in the set
+	for (FD fd : temp) {
+		Set<Set<String>> left = new HashSet<Set<String>>();
+		left.addAll(powerSet(fd.getLeft()));
+		for (Set<String> set: left) {
+			if (!set.isEmpty()) {
+				FD trivFD = new FD();
+				trivFD.addToLeft(fd.getLeft());
+				trivFD.addToRight(set);
+				trivial.add(trivFD);
+			}
+			
+		}
+	}
+    return trivial;
   }
+
 
   /**
    * Augments every FD in the given set of FDs with the given attributes
@@ -33,8 +52,15 @@ public final class FDUtil {
   public static FDSet augment(final FDSet fdset, final Set<String> attrs) {
     // TODO: Copy each FD in the given set and then union both sides with the given
     // set of attributes, and add this augmented FD to a new FDSet.
-
-    return null;
+	FDSet augmented = new FDSet();
+	Set<String> att = new HashSet(attrs);
+	for (FD fd: fdset) {
+		FD temp = new FD(fd);
+		temp.addToLeft(att);
+		temp.addToRight(att);
+		augmented.add(temp);
+	}
+    return augmented;
   }
 
   /**
@@ -47,8 +73,29 @@ public final class FDUtil {
     // TODO: Examine each pair of FDs in the given set. If the transitive property
     // holds on the pair of FDs, then generate the new FD and add it to a new FDSet.
     // Repeat until no new transitive FDs are found.
-
-    return null;
+	boolean looking = true;
+	FDSet newSet = new FDSet(fdset);
+	FDSet newOnly = new FDSet();
+	while (looking) {
+	int initSize = newSet.size();
+	FDSet comp = new FDSet(newSet);
+	for (FD first: comp) {
+		  for (FD second: comp) {
+			  if (first.getRight().equals(second.getLeft())) {
+				  FD newfd = new FD();
+				  newfd.addToLeft(first.getLeft());
+				  newfd.addToRight(second.getRight());
+				  newSet.add(newfd);
+				  newOnly.add(newfd);
+			  }
+		  }
+	}
+	if (newSet.size() == initSize) {
+		  return newOnly;
+	}
+	else newSet.addAll(comp);
+	}   
+    return newOnly;
   }
 
   /**
@@ -58,14 +105,45 @@ public final class FDUtil {
    * @return the closure of the input FD Set
    */
   public static FDSet fdSetClosure(final FDSet fdset) {
+	  
     // TODO: Use the FDSet copy constructor to deep copy the given FDSet
-
-    // TODO: Generate new FDs by applying Trivial and Augmentation Rules, followed
-    // by Transitivity Rule, and add new FDs to the result.
-    // Repeat until no further changes are detected.
-
-    return null;
+	FDSet closed = new FDSet(fdset);
+	boolean looking = true;
+	while(looking) {
+		int setSize = closed.size();
+		FDSet temp = new FDSet(closed);
+		Set<String> collectedAtts = getAtts(closed);
+		for (String att: collectedAtts) {
+			Set<String> aux = new HashSet<String>();
+			aux.add(att);
+			for (FD fd:closed) {
+				FD newFD = new FD(fd);
+				newFD.addToLeft(aux);
+				newFD.addToRight(aux);
+				temp.add(newFD);
+			}
+		}
+		temp.addAll(trivial(temp));
+		temp.addAll(transitive(temp));
+		//Add in the temp vals
+		closed.addAll(temp);
+		if (closed.size() == setSize) {
+			looking = false;
+		}
+	}
+      
+    return closed;
   }
+  
+  public static <E> Set<String> getAtts(final FDSet check) {
+	  Set<String> collectedAtts = new HashSet<String>();
+	  for (FD fd: check) {
+		  collectedAtts.addAll(fd.getLeft());
+		  collectedAtts.addAll(fd.getRight());
+	  }
+	return collectedAtts;
+  }
+  
 
   /**
    * Generates the power set of the given set (that is, all subsets of
@@ -105,4 +183,6 @@ public final class FDUtil {
     currentPset.addAll(otherPset);
     return currentPset;
   }
+  
+  
 }
